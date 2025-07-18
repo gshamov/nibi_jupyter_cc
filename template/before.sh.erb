@@ -1,0 +1,40 @@
+# Export the module function if it exists
+[[ $(type -t module) == "function" ]] && export -f module
+
+# Find available port to run server on
+port=$(find_port)
+
+# Generate SHA1 encrypted password (requires OpenSSL installed)
+SALT="$(create_passwd 16)"
+password="$(create_passwd 32)"
+#PASSWORD_SHA1="$(echo -n "${password}${SALT}" | openssl dgst -sha1 | awk '{print $NF}')"
+PASSWORD_SHA1="$(echo -n "${password}${SALT}" | openssl dgst -sha3-512 | awk '{print $NF}')"
+
+# Generate token
+export token="$(create_passwd 64)"
+
+# The `$CONFIG_FILE` environment variable is exported as it is used in the main
+# `script.sh.erb` file when launching the Jupyter Notebook server.
+mkdir -p ${PWD}/.ood_jupyter_cc
+export CONFIG_FILE="${PWD}/.ood_jupyter_cc/config.py"
+
+# Generate Jupyter configuration file with secure file permissions
+#c.ServerApp.disable_check_xsrf = True
+(
+umask 077
+cat > "${CONFIG_FILE}" << EOL
+c.ServerApp.ip = '*'
+c.ServerApp.port = ${port}
+c.ServerApp.port_retries = 0
+c.ServerApp.token = '${token}'
+c.ServerApp.password = u'sha3_512:${SALT}:${PASSWORD_SHA1}'
+c.ServerApp.base_url = '/node/${host}/${port}/'
+c.ServerApp.open_browser = False
+c.ServerApp.allow_origin = 'https://ondemand.sharcnet.ca'
+c.ServerApp.disable_check_xsrf = True
+c.ServerApp.root_dir = '${HOME}'
+EOL
+)
+
+#GAS debug
+# cat $CONFIG_FILE

@@ -1,0 +1,55 @@
+#!/bin/bash
+
+<%- gpu = context.node_type.include?("gpu") -%>
+
+# check the version
+
+echo Jupyter from CCEnv version is ... <%= context.jupyter_version %> using the  <%= context.mode %> mode
+
+# Set working directory to home directory
+cd "${HOME}"
+
+# Load modules
+module purge
+module load StdEnv/2023 arch/avx2 gcc
+<%- if gpu -%>
+	echo "it is prident to load CUDA and arrow now because GPUs"
+	module load cuda
+	module load boost arrow
+<%- end -%>
+
+#GAS the python kernel depends on a particular ipykernel. Which may get sticky and wont reload!
+module load python/3.12.4
+module load ipykernel/2024b ipython-kernel/3.12  nodejs/18.17.1
+# the ones below are needed for extra things in the Launcher like RStudio and Julia
+module load rstudio-server/4.4 ijulia-kernel/1.10
+
+# Launch the Jupyter Notebook Server
+#set -x
+
+# GAS lets try TMPDIR for pip if SLURM_TMPDIR is not there.
+if [[ ! -v SLURM_TMPDIR ]]; then
+  export SLURM_TMPDIR="${TMPDIR}"
+fi
+
+echo SLURM_TMPDIR is $SLURM_TMPDIR
+
+#GAS lifting stuff from https://github.com/ComputeCanada/puppet-jupyterhub/blob/main/data/common.yaml
+
+export JUPYTER_RUNTIME_DIR=${SLURM_TMPDIR}/jupyter
+# Setup user pip install folder
+export PIP_PREFIX=${SLURM_TMPDIR}
+export PATH="${PIP_PREFIX}/bin":${PATH}
+# this one breaks pip
+#export PIP_NO_USER=true
+
+#GAS  Lets use CC usercustomize. Looks like it is present for every version (although the same for now?)
+export PYTHONPATH=${PYTHONPATH}:"/cvmfs/soft.computecanada.ca/custom/python/envs/jupyterhub_node/<%= context.jupyter_version %>/lib/usercustomize"
+export JUPYTER_PREFER_ENV_PATH=0
+
+#GAS this one has broken lmod tab with not working scroll
+/cvmfs/soft.computecanada.ca/custom/python/envs/jupyterhub_node/<%= context.jupyter_version %>/bin/jupyter <%= context.mode %> --config="${CONFIG_FILE}"
+#GAS this one is newer
+#/cvmfs/soft.computecanada.ca/custom/python/envs/jupyterhub_node/v6.8.2/bin/jupyter lab --config="${CONFIG_FILE}"
+
+#/cvmfs/soft.computecanada.ca/custom/python/envs/jupyterhub_node/v6.8.2/bin/jupyter notebook --config="${CONFIG_FILE}"

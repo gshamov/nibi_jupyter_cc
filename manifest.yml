@@ -1,0 +1,8 @@
+---
+name: Jupyter
+category: Interactive Apps
+subcategory: Servers
+role: batch_connect
+description: "This app will launch a [Jupyter] server using [CCEnv] on the Nibi Sharcnet
+  cluster.\r\n\r\n[Jupyter]: https://jupyter.org/\r\n[CCEnv]: https://docs.alliancecan.ca/wiki/Available_software"
+icon: fas://cog
